@@ -1,5 +1,5 @@
-import { createMachine, spawn } from "xstate";
-import { assign } from "@xstate/immer";
+import { createMachine, assign, spawn } from "xstate";
+import { produce } from "immer";
 import { cartMachine } from "./cart.machine";
 
 export interface Product {
@@ -131,52 +131,71 @@ export const storeMachine = createMachine(
           `item-${event.payload.id}`
         );
       },
-      updateAddingItemsContext: assign((ctx, event) => {
-        if (event.type !== "ADDING_ITEM") {
-          return ctx;
-        }
 
-        ctx.addingItems.push(event.product.id);
-      }),
-      finishAddingItemsContext: assign((ctx, event) => {
-        if (event.type !== "DONE_ADDING") {
-          return ctx;
-        }
+      updateAddingItemsContext: assign({
+        addingItems: (ctx, event) => {
+          if (event.type !== "ADDING_ITEM") {
+            return ctx.addingItems;
+          }
 
-        ctx.addingItems = ctx.addingItems.filter(
-          (id) => id !== event.product.id
-        );
-      }),
-      updateItemQty: assign((ctx, event) => {
-        if (event.type !== "UPDATE_QTY") {
-          return ctx;
-        }
-
-        const { id } = event.payload;
-        const qty = Number(event.payload.qty);
-        const idx = ctx.cart.findIndex((obj) => obj.id === id);
-
-        ctx.cart[idx].qty = qty;
-
-        return ctx;
-      }),
-      updateCartContext: assign((ctx, event) => {
-        console.log("Done");
-        if (event.type !== "DONE_ADDING") {
-          return ctx;
-        }
-
-        const { product } = event;
-        const findExisting = ctx.cart.findIndex((obj) => obj.id === product.id);
-
-        if (findExisting === -1) {
-          ctx.cart.push({
-            ...product,
-            qty: 1,
+          return produce(ctx.addingItems, (arr) => {
+            arr.push(event.product.id);
           });
-        } else {
-          ctx.cart[findExisting].qty += 1;
-        }
+        },
+      }),
+
+      finishAddingItemsContext: assign({
+        addingItems: (ctx, event) => {
+          if (event.type !== "DONE_ADDING") {
+            return ctx.addingItems;
+          }
+
+          return produce(ctx.addingItems, (arr) =>
+            arr.filter((id) => id !== event.product.id)
+          );
+        },
+      }),
+
+      updateItemQty: assign({
+        cart: (ctx, event) => {
+          if (event.type !== "UPDATE_QTY") {
+            return ctx.cart;
+          }
+
+          const { id } = event.payload;
+          const qty = Number(event.payload.qty);
+          const idx = ctx.cart.findIndex((obj) => obj.id === id);
+
+          return produce(ctx.cart, (items) => {
+            items[idx].qty = qty;
+          });
+        },
+      }),
+
+      updateCartContext: assign({
+        cart: (ctx, event) => {
+          if (event.type !== "DONE_ADDING") {
+            return ctx.cart;
+          }
+
+          console.log("Done");
+
+          const { product } = event;
+          const findExisting = ctx.cart.findIndex(
+            (obj) => obj.id === product.id
+          );
+
+          return produce(ctx.cart, (items) => {
+            if (findExisting === -1) {
+              items.push({
+                ...product,
+                qty: 1,
+              });
+            } else {
+              ctx.cart[findExisting].qty += 1;
+            }
+          });
+        },
       }),
     },
   }
