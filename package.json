@@ -16,7 +16,6 @@
     "@mantine/hooks": "^6.0.16",
     "@mantine/modals": "^6.0.16",
     "@tabler/icons-react": "^2.24.0",
-    "@xstate/immer": "^0.3.3",
     "@xstate/react": "^3.2.2",
     "immer": "^10.0.2",
     "react": "^18.2.0",
