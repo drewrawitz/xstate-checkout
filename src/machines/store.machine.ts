@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { createMachine, spawn } from "xstate";
 import { assign } from "@xstate/immer";
 import { cartMachine } from "./cart.machine";
@@ -133,10 +131,18 @@ export const storeMachine = createMachine(
           `item-${event.payload.id}`
         );
       },
-      updateAddingItemsContext: assign((ctx, event: any) => {
+      updateAddingItemsContext: assign((ctx, event) => {
+        if (event.type !== "ADDING_ITEM") {
+          return ctx;
+        }
+
         ctx.addingItems.push(event.product.id);
       }),
-      finishAddingItemsContext: assign((ctx, event: any) => {
+      finishAddingItemsContext: assign((ctx, event) => {
+        if (event.type !== "DONE_ADDING") {
+          return ctx;
+        }
+
         ctx.addingItems = ctx.addingItems.filter(
           (id) => id !== event.product.id
         );
@@ -154,13 +160,20 @@ export const storeMachine = createMachine(
 
         return ctx;
       }),
-      updateCartContext: assign((ctx, event: any) => {
+      updateCartContext: assign((ctx, event) => {
         console.log("Done");
+        if (event.type !== "DONE_ADDING") {
+          return ctx;
+        }
+
         const { product } = event;
         const findExisting = ctx.cart.findIndex((obj) => obj.id === product.id);
 
         if (findExisting === -1) {
-          ctx.cart.push(product);
+          ctx.cart.push({
+            ...product,
+            qty: 1,
+          });
         } else {
           ctx.cart[findExisting].qty += 1;
         }
