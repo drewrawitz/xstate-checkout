@@ -181,18 +181,16 @@ export const storeMachine = createMachine(
           console.log("Done");
 
           const { product } = event;
-          const findExisting = ctx.cart.findIndex(
-            (obj) => obj.id === product.id
-          );
+          const idx = ctx.cart.findIndex((obj) => obj.id === product.id);
 
           return produce(ctx.cart, (items) => {
-            if (findExisting === -1) {
+            if (idx === -1) {
               items.push({
                 ...product,
                 qty: 1,
               });
             } else {
-              ctx.cart[findExisting].qty += 1;
+              items[idx].qty += 1;
             }
           });
         },
