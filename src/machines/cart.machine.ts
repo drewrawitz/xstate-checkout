@@ -1,5 +1,5 @@
 import { createMachine, sendParent } from "xstate";
-import { Product } from "./store.machine";
+import { CartItem, Product } from "../utils/types";
 import { delay } from "../utils/misc";
 
 export const cartMachine = createMachine(
@@ -8,6 +8,7 @@ export const cartMachine = createMachine(
     id: "addItemToCartMachine",
     context: {
       product: null,
+      cart: [],
     },
     initial: "ADDING_ITEM",
     states: {
@@ -35,6 +36,19 @@ export const cartMachine = createMachine(
     schema: {
       context: {} as {
         product: Product | null;
+        cart: CartItem[];
+      },
+      services: {} as {
+        addItemToCart: {
+          data: {
+            success: boolean;
+            error?: {
+              code: string;
+              message: string;
+              metadata: Record<any, any>;
+            };
+          };
+        };
       },
     },
     predictableActionArguments: true,
@@ -43,10 +57,21 @@ export const cartMachine = createMachine(
   },
   {
     actions: {
-      done: sendParent((ctx) => {
+      done: sendParent((ctx, event) => {
+        console.log("done done done", event);
+        if (event.data.success) {
+          return {
+            type: "DONE_ADDING",
+            product: { ...ctx.product },
+            qty: 1,
+          };
+        }
+
         return {
           type: "DONE_ADDING",
-          product: { ...ctx.product, qty: 1 },
+          // Don't increment qty if maxOrderQty is reached
+          product: { ...ctx.product },
+          qty: 0,
         };
       }),
       sendLoadingStateToParent: sendParent((ctx) => {
@@ -66,9 +91,36 @@ export const cartMachine = createMachine(
     },
     services: {
       addItemToCart: async (ctx, event) => {
+        const findItemInCart = ctx.cart.find(
+          (obj) => obj.id === ctx?.product?.id
+        );
+
+        if (
+          findItemInCart &&
+          findItemInCart.maxOrderQty &&
+          findItemInCart.qty + 1 > findItemInCart.maxOrderQty
+        ) {
+          return {
+            success: false,
+            error: {
+              code: "MAX_ORDER_QTY_REACHED",
+              message: "Max order quantity reached",
+              metadata: {
+                qty: findItemInCart.maxOrderQty,
+              },
+            },
+          };
+        }
+
         try {
+          console.log("Adding item to cart", {
+            ctx,
+            event,
+          });
           await delay(1000, 0);
-          console.log({ event, ctx });
+          return {
+            success: true,
+          };
         } catch (err) {
           throw new Error("Failed to add item to cart");
         }

@@ -1,22 +1,11 @@
 import { createMachine, assign, spawn } from "xstate";
 import { produce } from "immer";
 import { cartMachine } from "./cart.machine";
-
-export interface Product {
-  id: string;
-  name: string;
-  image: string;
-  price: number;
-  maxOrderQty?: number;
-}
-
-interface CartItem extends Product {
-  qty: number;
-}
+import { CartItem, Product } from "../utils/types";
 
 export const storeMachine = createMachine(
   {
-    /** @xstate-layout N4IgpgJg5mDOIC5QGUAqB5ASgUQMQEEARQgSQDkBxAfRNWwFkBtABgF1FQAHAe1gEsALn24A7DiAAeiABwA2AHQBOaQFZZsgCwAmWcwDsixcwCMAGhABPRHpXT5zDSu3Lnc4wF935tFjyF0ZNhURKSULOxIIDz8QqLiUgi28trMKlpaNioAzNIaeeZWiSoq8nrS0sbl+rLpilqe3hg4uADC+JioVNiYmFjh4tGCwmKRCeoa8rJyWZXSirJOWioF1kkOTlNZehpZdQ0gPs0hNHT0VBhUbR39kYOxI6AJOVrytorGasyyOVuKKwg2OzrDSbba7dL7Q7YeQkQgAGTw6AACtgyJd2qgblxeEM4qNEB87LoPppKjM9N9pP8sho7Co9FpVDT3sZjGVIU1oVdUK04ehkEFuViojj7vECUliWoNGS2ZT-my9Epsl89Ky9FlZGV6l4Dpz5NyYfC8C0ABLYFoAaXQAFVMWwBqLhuKEMYNHpmKV6eV5lkZrN-tkSk5FFkdCCdDMVBzfAaMUaEbgbUjCPg6FQAIqoACawruzvxCB2djZijVWjDRgrf0siDydlyNRUzGYGQW81kMZwcY68mTqdQ5Go3NwEFEYHkfBEADduABrCdQnuoPsptND9EdBBT2cAYwAhvdwnmnXjHnXaa8Sbk6tqVDXCllivJdjNZPNWZrWxou1z4-310oTceTAAAnUDuFA+ROAAG0PAAzSCAFt5CXQ0AMHIDuW3GduAPI82BPGIC3PBBlGML0ymkfQPkUe8zFrItW2VLJUgyRUNSfX9UNNEgkSRIcEzwEQwAkAQiNxB5JAJaQMleEF3iDBl0ipRig3k0Nwxqb5jE7fYRG4CA4HEKFHWIs9pNdT0UjSDJihyPINH+IxkhVUFjDLek9MaWNYQRMzJJdLVqQ0T1lEUd13Q8t0pm47kArFQstGUV4ymMHIVGMZKP3+dJrLcp8Pm0J8f11ND4z87AEpIyyaQUb10tULLDFkBjCgU+RZIyMsPhbEx9Di-810w4cMWqiyxjkeQtEqAxHC2BwKWpNJXNYrYms1TRozK-V0OGwUMS6HosHGqSEiyyp5Cy5stQi7YKmWRjQooujWKWZgKnKBZtp87tkF4-ih1Ol1dLqJR5uo-QdBMf5QqyDSw36upP24-6+IEyghOBws2VC8HskhhliUDTV7A0CLmCfJY8i4nbYzRwHMfwAyBAACzAgACXdWb4GCIA52ABEPMBsdIjz0leJtNFCpYDBJhQHApqmnB2bbPCAA */
+    /** @xstate-layout N4IgpgJg5mDOIC5QGUAqB5ASgUQMQEEARQgSQDkBxAfRNWwFkBtABgF1FQAHAe1gEsALn24A7DiAAeiAKwAmWQDoAHLKXNpAdgAssgGwbmsgMwAaEAE8Zu3QoCczXfI0BGbbI2aAvp7NoseQnQybCoiUkoWdiQQHn4hUXEpBH0zSwQtZlsFWWYjZm1rJWdDLW9fDBxcAGF8TFQqbExMLEjxWMFhMWikuQ0FIxUNI2lmJRcM2VTEZ1kykD9KsJo6eioMKhq61uj2+K7QHtVle2ldYr0NJSVdKeTHZWlbWUelR91bIrmF7AUSQgAZPDoAAK2DIG1qqG2XF4HQS3Wm0iUCl0mSM9mMGlslyUpgsiCMsi0CgyjlkzjUtmkzmpXwqP02qGq-3QyBCjOhMVhe0SiORqNs6MMRixOLxaVcfS00jyeQyHz0jjp-gUjNVkKoILB1QAEtgqgBpdAAVShbDa3M6vIQMv5Yy0H2lWi0Hmkt2lilJ8ltqPkROVOHVdSD9S1ZFwxuBhHwdCoAEVUABNTm7K0IhBGLTOBSPEXDa7vIwi27DbNUvJPa7OYoGaQBn7IHUkYHA8gUX4AvAiMASAQpy3wg6IJRUklKLR5GV51Rad1yEkOb0DX3kozeHwgETcCBwcTfC1xNNDhDOWy3Ed2GW5PSvHTGXT1juAg9w-aSRApfEZ5w2FSqMZIjk0gjHWG7fCGL48umsiCjmgpDEi1iCsWX7klk5a5Jo2hIhozyPmqjKaqCZCQUe74ZtS-SqNWzgikSLziogHp2IuzzLoY8iPo2zatpQpGDuRGioso2gfLY2Iju8zgljkC6OLoRQDOJtJgfSCjcS2bZPtg-FvkkajIvaYkSbYUlzoo9hkj6HGzKpKoabx7b4FuAgABZgAATgABAAxq5fAADYQF5sACAAhgIYC6da4nMCS4m2M61KGD+GjmSxVnsX666eEAA */
     id: "STORE",
     initial: "IDLE",
     states: {
@@ -100,7 +89,7 @@ export const storeMachine = createMachine(
               qty: string;
             };
           }
-        | { type: "DONE_ADDING"; product: Product }
+        | { type: "DONE_ADDING"; product: Product; qty: number }
         | { type: "ADDING_ITEM"; product: Product }
         | {
             type: "ADD_ITEM_TO_CART";
@@ -126,6 +115,7 @@ export const storeMachine = createMachine(
 
         spawn(
           cartMachine.withContext({
+            cart: ctx.cart,
             product: { ...event.payload },
           }),
           `item-${event.payload.id}`
@@ -178,9 +168,9 @@ export const storeMachine = createMachine(
             return ctx.cart;
           }
 
-          console.log("Done");
+          console.log("Done", event);
 
-          const { product } = event;
+          const { product, qty } = event;
           const idx = ctx.cart.findIndex((obj) => obj.id === product.id);
 
           return produce(ctx.cart, (items) => {
@@ -190,7 +180,7 @@ export const storeMachine = createMachine(
                 qty: 1,
               });
             } else {
-              items[idx].qty += 1;
+              items[idx].qty += qty;
             }
           });
         },
