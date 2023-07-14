@@ -13,6 +13,6 @@ export const products = [
     image:
       "https://cdn-fsly.yottaa.net/57f4626c312e584b1a000020/www.tillys.com/v~4b.217.0.0/on/demandware.static/-/Sites-master-catalog/default/dwa3b4d667/tillys/images/catalog/1000x1000/238491125.jpg?yocs=y_l_x_",
     price: 8499,
-    maxOrderQty: 4,
+    maxOrderQty: 20,
   },
 ];

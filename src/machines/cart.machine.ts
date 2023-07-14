@@ -58,7 +58,6 @@ export const cartMachine = createMachine(
   {
     actions: {
       done: sendParent((ctx, event) => {
-        console.log("done done done", event);
         if (event.data.success) {
           return {
             type: "DONE_ADDING",
@@ -81,7 +80,6 @@ export const cartMachine = createMachine(
         };
       }),
       sendErrorState: sendParent((ctx, event) => {
-        console.log({ ctx, event });
         return {
           type: "CART_ERROR",
           product: ctx.product,

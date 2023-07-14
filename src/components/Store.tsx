@@ -1,4 +1,5 @@
 import { IconAlertCircle } from "@tabler/icons-react";
+import { produce } from "immer";
 import {
   Container,
   Box,
@@ -20,6 +21,7 @@ import { storeMachine } from "../machines/store.machine";
 import { useSelector } from "@xstate/react";
 
 type State = StateFrom<typeof storeMachine>;
+type BulkItemState = { [key: string]: number };
 
 // TODO: Refactor this to a store config or something
 const MAX_ITEMS_IN_DROPDOWN = 10;
@@ -34,20 +36,52 @@ const Store: React.FC<{
 }> = ({ service, state }) => {
   const { send } = service;
   const [error, setError] = useState("");
-  const [bulkItemQty, setBulkItemQty] = useState<number | "">(
-    DEFAULT_BULK_ITEM_QTY
-  );
-  const [isDrawerOpen, setDrawerOpen] = useState(false);
   const cart = useSelector(service, selectCart);
   const addingItems = useSelector(service, selectAddingItems);
+  const [bulkItemQty, setBulkItemQty] = useState<BulkItemState>({});
+  const [isDrawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    const defaultState = cart.reduce((acc, item) => {
+      if (item.qty >= DEFAULT_BULK_ITEM_QTY) {
+        return {
+          ...acc,
+          [item.id]: item.qty,
+        };
+      }
+      return acc;
+    }, {});
+
+    setBulkItemQty(defaultState);
+  }, []);
 
   const numItems = useMemo(() => {
     return cart.reduce((acc, item) => acc + item.qty, 0);
   }, [cart]);
 
+  const updateBulkItemQty = (id: string, qty: number) => {
+    const updatedState = produce(bulkItemQty, (draft) => {
+      draft[id] = qty;
+    });
+
+    setBulkItemQty(updatedState);
+  };
+
   useEffect(() => {
     const subscription = service.subscribe((state) => {
-      console.log(state);
+      if (state.event.type === "DONE_ADDING") {
+        const { id } = state.event.product;
+
+        // Get Current Qty
+        const currentItem = state.context.cart.find((obj) => obj.id === id);
+        const shouldUpdate =
+          currentItem && currentItem.qty >= DEFAULT_BULK_ITEM_QTY;
+
+        if (shouldUpdate) {
+          updateBulkItemQty(id, currentItem.qty);
+        }
+      }
+
       if (state.event.type === "CART_ERROR") {
         const event = state.event;
 
@@ -72,7 +106,7 @@ const Store: React.FC<{
     return () => {
       subscription.unsubscribe();
     };
-  }, [service]);
+  }, [service, bulkItemQty]);
 
   return (
     <>
@@ -106,6 +140,7 @@ const Store: React.FC<{
           <div>
             {cart.map((item) => {
               const itemMaxQty = item.maxOrderQty ?? 10;
+              const bulkQty = bulkItemQty[item.id] ?? DEFAULT_BULK_ITEM_QTY;
 
               return (
                 <Box key={item.id} py="lg">
@@ -116,28 +151,31 @@ const Store: React.FC<{
                     itemMaxQty > MAX_ITEMS_IN_DROPDOWN ? (
                       <Group>
                         <NumberInput
-                          value={bulkItemQty}
-                          onChange={setBulkItemQty}
+                          value={bulkQty}
+                          onChange={(val) => {
+                            updateBulkItemQty(item.id, Number(val));
+                          }}
                           w={100}
                           min={1}
                           max={itemMaxQty}
                           defaultValue={MAX_ITEMS_IN_DROPDOWN}
                         />
-                        {bulkItemQty !== item.qty && (
+                        {bulkQty !== item.qty && (
                           <Button
                             variant="subtle"
                             onClick={() => {
-                              if (bulkItemQty) {
+                              if (bulkQty) {
                                 send({
                                   type: "UPDATE_QTY",
                                   payload: {
                                     id: item.id,
-                                    qty: String(bulkItemQty),
+                                    qty: String(bulkQty),
                                   },
                                 });
 
-                                setBulkItemQty(
-                                  Math.max(bulkItemQty, MAX_ITEMS_IN_DROPDOWN)
+                                updateBulkItemQty(
+                                  item.id,
+                                  Math.max(bulkQty, MAX_ITEMS_IN_DROPDOWN)
                                 );
                               }
                             }}

@@ -168,8 +168,6 @@ export const storeMachine = createMachine(
             return ctx.cart;
           }
 
-          console.log("Done", event);
-
           const { product, qty } = event;
           const idx = ctx.cart.findIndex((obj) => obj.id === product.id);
 
