@@ -17,14 +17,20 @@ import { useState, useEffect, useMemo } from "react";
 import ProductCard from "./ProductCard";
 import { InterpreterFrom, StateFrom } from "xstate";
 import { storeMachine } from "../machines/store.machine";
+import { useSelector } from "@xstate/react";
+
+type State = StateFrom<typeof storeMachine>;
 
 // TODO: Refactor this to a store config or something
 const MAX_ITEMS_IN_DROPDOWN = 10;
 const DEFAULT_BULK_ITEM_QTY = MAX_ITEMS_IN_DROPDOWN;
 
+const selectCart = (state: State) => state.context.cart;
+const selectAddingItems = (state: State) => state.context.addingItems;
+
 const Store: React.FC<{
   service: InterpreterFrom<typeof storeMachine>;
-  state: StateFrom<typeof storeMachine>;
+  state: State;
 }> = ({ service, state }) => {
   const { send } = service;
   const [error, setError] = useState("");
@@ -32,13 +38,16 @@ const Store: React.FC<{
     DEFAULT_BULK_ITEM_QTY
   );
   const [isDrawerOpen, setDrawerOpen] = useState(false);
+  const cart = useSelector(service, selectCart);
+  const addingItems = useSelector(service, selectAddingItems);
 
   const numItems = useMemo(() => {
-    return state.context.cart.reduce((acc, item) => acc + item.qty, 0);
-  }, [state.context]);
+    return cart.reduce((acc, item) => acc + item.qty, 0);
+  }, [cart]);
 
   useEffect(() => {
     const subscription = service.subscribe((state) => {
+      console.log(state);
       if (state.event.type === "CART_ERROR") {
         const event = state.event;
 
@@ -95,7 +104,7 @@ const Store: React.FC<{
           </Box>
         ) : (
           <div>
-            {state.context.cart.map((item) => {
+            {cart.map((item) => {
               const itemMaxQty = item.maxOrderQty ?? 10;
 
               return (
@@ -195,7 +204,6 @@ const Store: React.FC<{
       <Container>
         <div className="card">
           <pre>{JSON.stringify(state.value)}</pre>
-          <pre>{JSON.stringify(state.context)}</pre>
 
           {error && (
             <Alert
@@ -219,7 +227,7 @@ const Store: React.FC<{
 
           <Grid mt="lg">
             {products.map((product) => {
-              const isAddingToCart = state.context.addingItems.some(
+              const isAddingToCart = addingItems.some(
                 (obj) => obj === product.id
               );
 
