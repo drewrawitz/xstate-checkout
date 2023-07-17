@@ -12,6 +12,7 @@ import {
   Button,
   Alert,
   NumberInput,
+  LoadingOverlay,
 } from "@mantine/core";
 import { products } from "../data/db";
 import { useState, useEffect, useMemo } from "react";
@@ -119,6 +120,7 @@ const Store: React.FC<{
         title="Your Cart"
         overlayProps={{ opacity: 0.5, blur: 4 }}
       >
+        {/* <LoadingOverlay visible={true} overlayBlur={2} /> */}
         <pre>{JSON.stringify(state.value)}</pre>
 
         {numItems === 0 ? (
@@ -143,86 +145,114 @@ const Store: React.FC<{
               const bulkQty = bulkItemQty[item.id] ?? DEFAULT_BULK_ITEM_QTY;
 
               return (
-                <Box key={item.id} py="lg">
+                <Box
+                  key={item.id}
+                  py="lg"
+                  sx={{ borderBottom: "1px solid #ccc" }}
+                >
                   <Text weight={700}>{item.name}</Text>
-                  <Group mt="sm">
-                    <Text>Quantity:</Text>
-                    {item.qty >= MAX_ITEMS_IN_DROPDOWN &&
-                    itemMaxQty > MAX_ITEMS_IN_DROPDOWN ? (
-                      <Group>
-                        <NumberInput
-                          value={bulkQty}
-                          onChange={(val) => {
-                            updateBulkItemQty(item.id, Number(val));
-                          }}
-                          w={100}
-                          min={1}
-                          max={itemMaxQty}
-                          defaultValue={MAX_ITEMS_IN_DROPDOWN}
-                        />
-                        {bulkQty !== item.qty && (
-                          <Button
-                            variant="subtle"
-                            onClick={() => {
-                              if (bulkQty) {
-                                send({
-                                  type: "UPDATE_QTY",
-                                  payload: {
-                                    id: item.id,
-                                    qty: String(bulkQty),
-                                  },
-                                });
 
-                                updateBulkItemQty(
-                                  item.id,
-                                  Math.max(bulkQty, MAX_ITEMS_IN_DROPDOWN)
-                                );
-                              }
+                  {item.price.savings?.message && (
+                    <Text size="sm" color="red" mt={5}>
+                      {item.price.savings?.message}
+                    </Text>
+                  )}
+
+                  <Group align="center" position="apart" mt="sm">
+                    <Group>
+                      <Text>Quantity:</Text>
+                      {item.qty >= MAX_ITEMS_IN_DROPDOWN &&
+                      itemMaxQty > MAX_ITEMS_IN_DROPDOWN ? (
+                        <Group>
+                          <NumberInput
+                            value={bulkQty}
+                            onChange={(val) => {
+                              updateBulkItemQty(item.id, Number(val));
                             }}
-                          >
-                            Update
-                          </Button>
-                        )}
-                      </Group>
-                    ) : (
-                      <Select
-                        w={100}
-                        value={String(item.qty)}
-                        data={Array.from(
-                          {
-                            length: Math.min(itemMaxQty, MAX_ITEMS_IN_DROPDOWN),
-                          },
-                          (_, i) => {
-                            const canAddMoreThanMax =
-                              i + 1 === MAX_ITEMS_IN_DROPDOWN &&
-                              itemMaxQty > MAX_ITEMS_IN_DROPDOWN;
+                            w={100}
+                            min={1}
+                            max={itemMaxQty}
+                            defaultValue={MAX_ITEMS_IN_DROPDOWN}
+                          />
+                          {bulkQty !== item.qty && (
+                            <Button
+                              variant="subtle"
+                              onClick={() => {
+                                if (bulkQty) {
+                                  send({
+                                    type: "UPDATE_QTY",
+                                    payload: {
+                                      id: item.id,
+                                      qty: String(bulkQty),
+                                    },
+                                  });
 
-                            return canAddMoreThanMax
-                              ? `${MAX_ITEMS_IN_DROPDOWN}+`
-                              : String(i + 1);
-                          }
-                        )}
-                        onChange={(val) => {
-                          const qty = val?.endsWith("+")
-                            ? MAX_ITEMS_IN_DROPDOWN
-                            : val;
-
-                          send({
-                            type: "UPDATE_QTY",
-                            payload: {
-                              id: item.id,
-                              qty: String(qty),
+                                  updateBulkItemQty(
+                                    item.id,
+                                    Math.max(bulkQty, MAX_ITEMS_IN_DROPDOWN)
+                                  );
+                                }
+                              }}
+                            >
+                              Update
+                            </Button>
+                          )}
+                        </Group>
+                      ) : (
+                        <Select
+                          w={100}
+                          value={String(item.qty)}
+                          data={Array.from(
+                            {
+                              length: Math.min(
+                                itemMaxQty,
+                                MAX_ITEMS_IN_DROPDOWN
+                              ),
                             },
-                          });
-                        }}
-                        transitionProps={{
-                          transition: "pop-top-left",
-                          duration: 80,
-                          timingFunction: "ease",
-                        }}
-                        withinPortal
-                      />
-                    )}
+                            (_, i) => {
+                              const canAddMoreThanMax =
+                                i + 1 === MAX_ITEMS_IN_DROPDOWN &&
+                                itemMaxQty > MAX_ITEMS_IN_DROPDOWN;
+
+                              return canAddMoreThanMax
+                                ? `${MAX_ITEMS_IN_DROPDOWN}+`
+                                : String(i + 1);
+                            }
+                          )}
+                          onChange={(val) => {
+                            const qty = val?.endsWith("+")
+                              ? MAX_ITEMS_IN_DROPDOWN
+                              : val;
+
+                            send({
+                              type: "UPDATE_QTY",
+                              payload: {
+                                id: item.id,
+                                qty: String(qty),
+                              },
+                            });
+                          }}
+                          transitionProps={{
+                            transition: "pop-top-left",
+                            duration: 80,
+                            timingFunction: "ease",
+                          }}
+                          withinPortal
+                        />
+                      )}
+                    </Group>
+
+                    <Stack spacing={0}>
+                      {item.price.sale?.value && (
+                        <Text size="xs" color="dimmed" strikethrough>
+                          {item.price.list.formatted}
+                        </Text>
+                      )}
+                      <Text size="lg" weight="bold">
+                        {item.price.sale?.formatted ??
+                          item.price.list.formatted}
+                      </Text>
+                    </Stack>
                   </Group>
                 </Box>
               );
@@ -233,6 +263,7 @@ const Store: React.FC<{
               radius="md"
               fullWidth
               size="lg"
+              mt="xl"
             >
               Checkout
             </Button>
